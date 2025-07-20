@@ -1,10 +1,10 @@
 {
   "name": "hermit-md",
   "version": "4.4.6",
-  "description": "Hermit-md - Simple whatsapp Multi Device bot based on @adiwajshing/baileys.",
+  "description": "Hermit-md - Simple WhatsApp Multi Device bot based on @adiwajshing/baileys.",
   "main": "index.js",
   "scripts": {
-    "start": "PIDUSAGE_SILENT=true pm2 start . --attach --name hermit-md"
+    "start": "PIDUSAGE_SILENT=true pm2 start index.js --attach --name hermit-md"
   },
   "author": "A-d-i-t-h-y-a-n",
   "license": "ISC",
