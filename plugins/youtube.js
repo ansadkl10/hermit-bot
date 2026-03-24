@@ -14,6 +14,8 @@ const yts = require("yt-search");
 const config = require('../config');
 const fs = require('fs');
 
+// --- AUDIO COMMANDS (play, song, yta) ---
+
 Function({
   pattern: 'play ?(.*)',
   fromMe: isPublic,
@@ -28,23 +30,24 @@ Function({
     if (search.videos.length < 1) return await message.reply('_No results found_');
     
     const video = search.videos[0];
-    const apiUrl = `https://api-25ca.onrender.com/api/yta?url=${encodeURIComponent(video.url)}&format=mp3`;
+    const apiUrl = `https://eliteprotech-apis.zone.id/ytdown?url=${encodeURIComponent(video.url)}&format=mp3`;
     
     await message.reply(`_Downloading: ${video.title}_`);
     
     const result = await getJson(apiUrl);
     
-    if (!result.status) {
+    if (!result.success) {
       return await message.reply('_Failed to download audio_');
     }
     
-    const audioBuffer = await getBuffer(result.result.download);
-    const thumbBuffer = await getBuffer(result.result.thumbnail);
+    const audioBuffer = await getBuffer(result.downloadURL);
+    // Thumbnail search result-ൽ നിന്ന് തന്നെ എടുക്കാം
+    const thumbBuffer = await getBuffer(video.thumbnail);
     
     const writer = await addAudioMetaData(
       await toAudio(audioBuffer),
       thumbBuffer,
-      result.result.title,
+      result.title,
       `${config.BOT_INFO.split(";")[0]}`,
       'Hermit Official'
     );
@@ -70,33 +73,31 @@ Function({
   if (!match) return message.reply('_Need URL or song name!_\n*Example: .song URL/song name*');
   
   try {
-    let videoUrl;
-    
+    let videoUrl, thumb;
     if (isUrl(match) && match.includes('youtu')) {
       videoUrl = match;
+      const vid = await yts({ videoId: yts.parseArgs(match).videoId });
+      thumb = vid.thumbnail;
     } else {
       const search = await yts(match);
       if (search.videos.length < 1) return await message.reply('_No results found_');
       videoUrl = search.videos[0].url;
+      thumb = search.videos[0].thumbnail;
     }
     
-    const apiUrl = `https://api-25ca.onrender.com/api/yta?url=${encodeURIComponent(videoUrl)}&format=mp3`;
-    
+    const apiUrl = `https://eliteprotech-apis.zone.id/ytdown?url=${encodeURIComponent(videoUrl)}&format=mp3`;
     await message.reply('_Downloading audio..._');
     
     const result = await getJson(apiUrl);
+    if (!result.success) return await message.reply('_Failed to download audio_');
     
-    if (!result.status) {
-      return await message.reply('_Failed to download audio_');
-    }
-    
-    const audioBuffer = await getBuffer(result.result.download);
-    const thumbBuffer = await getBuffer(result.result.thumbnail);
+    const audioBuffer = await getBuffer(result.downloadURL);
+    const thumbBuffer = await getBuffer(thumb);
     
     const writer = await addAudioMetaData(
       await toAudio(audioBuffer),
       thumbBuffer,
-      result.result.title,
+      result.title,
       `${config.BOT_INFO.split(";")[0]}`,
       'Hermit Official'
     );
@@ -107,10 +108,11 @@ Function({
     }, { quoted: message.data });
     
   } catch (error) {
-    console.error('Error:', error);
-    return message.reply(`Error: ${error.message || 'Unknown error occurred'}`);
+    return message.reply(`Error: ${error.message}`);
   }
 });
+
+// --- VIDEO COMMANDS (video, ytv) ---
 
 Function({
   pattern: 'video ?(.*)',
@@ -123,7 +125,6 @@ Function({
   
   try {
     let videoUrl;
-    
     if (isUrl(match) && match.includes('youtu')) {
       videoUrl = match;
     } else {
@@ -132,27 +133,24 @@ Function({
       videoUrl = search.videos[0].url;
     }
     
-    const apiUrl = `https://api-25ca.onrender.com/api/ytv?url=${encodeURIComponent(videoUrl)}&format=360`;
-    
+    // Aswin Sparky API for Video
+    const apiUrl = `https://api-aswin-sparky.koyeb.app/api/downloader/ytv?url=${encodeURIComponent(videoUrl)}`;
     await message.reply('_Downloading video..._');
     
     const result = await getJson(apiUrl);
+    if (!result.status) return await message.reply('_Failed to download video_');
     
-    if (!result.status) {
-      return await message.reply('_Failed to download video_');
-    }
-    
-    await message.send(result.result.download, 'video', {
+    await message.send(result.data.url, 'video', {
       quoted: message.data,
-      caption: result.result.title
+      caption: result.data.title
     });
     
   } catch (error) {
-    console.error('Error:', error);
-    return message.reply(`Error: ${error.message || 'Unknown error occurred'}`);
+    return message.reply(`Error: ${error.message}`);
   }
 });
 
+// yta command (using eliteprotech)
 Function({
   pattern: 'yta ?(.*)',
   fromMe: isPublic,
@@ -160,58 +158,21 @@ Function({
   type: 'download'
 }, async (message, match, client) => {
   match = match || message.reply_message.text;
-  if (!match) return message.reply('_Need URL or song name!_\n*Example: .yta URL/song name*');
+  if (!match) return message.reply('_Need URL!_');
   
   try {
-    let videoUrl;
-    let format = 'mp3';
-    
-    if (match.includes('format:')) {
-      const parts = match.split('format:');
-      match = parts[0].trim();
-      format = parts[1].trim();
-    }
-    
-    if (isUrl(match) && match.includes('youtu')) {
-      videoUrl = match;
-    } else {
-      const search = await yts(match);
-      if (search.videos.length < 1) return await message.reply('_No results found_');
-      videoUrl = search.videos[0].url;
-    }
-    
-    const apiUrl = `https://api-25ca.onrender.com/api/yta?url=${encodeURIComponent(videoUrl)}&format=${format}`;
-    
-    await message.reply('_Downloading audio..._');
-    
+    const apiUrl = `https://eliteprotech-apis.zone.id/ytdown?url=${encodeURIComponent(match)}&format=mp3`;
     const result = await getJson(apiUrl);
+    if (!result.success) return await message.reply('_Error_');
     
-    if (!result.status) {
-      return await message.reply('_Failed to download audio_');
-    }
+    const audioBuffer = await getBuffer(result.downloadURL);
+    const writer = await addAudioMetaData(await toAudio(audioBuffer), null, result.title, "Nexa-MD", "Hermit");
     
-    const audioBuffer = await getBuffer(result.result.download);
-    const thumbBuffer = await getBuffer(result.result.thumbnail);
-    
-    const writer = await addAudioMetaData(
-      await toAudio(audioBuffer),
-      thumbBuffer,
-      result.result.title,
-      `${config.BOT_INFO.split(";")[0]}`,
-      'Hermit Official'
-    );
-    
-    await message.client.sendMessage(message.jid, {
-      audio: writer,
-      mimetype: 'audio/mpeg'
-    }, { quoted: message.data });
-    
-  } catch (error) {
-    console.error('Error:', error);
-    return message.reply(`Error: ${error.message || 'Unknown error occurred'}`);
-  }
+    await message.client.sendMessage(message.jid, { audio: writer, mimetype: 'audio/mpeg' }, { quoted: message.data });
+  } catch (e) { message.reply(e.message) }
 });
 
+// ytv command (using aswin-sparky)
 Function({
   pattern: 'ytv ?(.*)',
   fromMe: isPublic,
@@ -219,43 +180,13 @@ Function({
   type: 'download'
 }, async (message, match, client) => {
   match = match || message.reply_message.text;
-  if (!match) return message.reply('_Need URL or video name!_\n*Example: .ytv URL/video name*');
+  if (!match) return message.reply('_Need URL!_');
   
   try {
-    let videoUrl;
-    let format = '360';
-    
-    if (match.includes('format:')) {
-      const parts = match.split('format:');
-      match = parts[0].trim();
-      format = parts[1].trim();
-    }
-    
-    if (isUrl(match) && match.includes('youtu')) {
-      videoUrl = match;
-    } else {
-      const search = await yts(match);
-      if (search.videos.length < 1) return await message.reply('_No results found_');
-      videoUrl = search.videos[0].url;
-    }
-    
-    const apiUrl = `https://api-25ca.onrender.com/api/ytv?url=${encodeURIComponent(videoUrl)}&format=${format}`;
-    
-    await message.reply('_Downloading video..._');
-    
+    const apiUrl = `https://api-aswin-sparky.koyeb.app/api/downloader/ytv?url=${encodeURIComponent(match)}`;
     const result = await getJson(apiUrl);
+    if (!result.status) return await message.reply('_Error_');
     
-    if (!result.status) {
-      return await message.reply('_Failed to download video_');
-    }
-    
-    await message.send(result.result.download, 'video', {
-      quoted: message.data,
-      caption: result.result.title
-    });
-    
-  } catch (error) {
-    console.error('Error:', error);
-    return message.reply(`Error: ${error.message || 'Unknown error occurred'}`);
-  }
+    await message.send(result.data.url, 'video', { quoted: message.data, caption: result.data.title });
+  } catch (e) { message.reply(e.message) }
 });
